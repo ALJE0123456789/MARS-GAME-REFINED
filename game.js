@@ -1726,3 +1726,138 @@ document.getElementById('start-btn').addEventListener('click', () => {
     
     console.log("Game Started!");
 });
+
+
+// =====================================================================
+// MOBILE TOUCH CONTROLS
+// =====================================================================
+(function initMobileControls() {
+  const joystickZone = document.getElementById('joystick-zone');
+  const joystickKnob = document.getElementById('joystick-knob');
+  const lookZone = document.getElementById('look-zone');
+  
+  if (!joystickZone || !lookZone) return; // Exit if UI is missing
+
+  // --- 1. Joystick Logic (WASD) ---
+  let joyCenter = { x: 0, y: 0 };
+  let joyRadius = 50;
+  let joyTouchId = null;
+
+  joystickZone.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const rect = joystickZone.getBoundingClientRect();
+    joyCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    joyRadius = rect.width / 2;
+    joyTouchId = e.changedTouches[0].identifier;
+    updateJoystick(e.changedTouches[0]);
+  }, { passive: false });
+
+  joystickZone.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === joyTouchId) {
+        updateJoystick(e.changedTouches[i]);
+      }
+    }
+  }, { passive: false });
+
+  const endJoystick = (e) => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === joyTouchId) {
+        joyTouchId = null;
+        keys.w = keys.a = keys.s = keys.d = false;
+        joystickKnob.style.transform = `translate(-50%, -50%)`;
+      }
+    }
+  };
+  joystickZone.addEventListener('touchend', endJoystick);
+  joystickZone.addEventListener('touchcancel', endJoystick);
+
+  function updateJoystick(touch) {
+    let dx = touch.clientX - joyCenter.x;
+    let dy = touch.clientY - joyCenter.y;
+    const dist = Math.hypot(dx, dy);
+    
+    // Clamp knob to base
+    if (dist > joyRadius) {
+      dx = (dx / dist) * joyRadius;
+      dy = (dy / dist) * joyRadius;
+    }
+    
+    joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+    // Map to WASD (threshold of 20px to prevent jitter)
+    const threshold = 20;
+    keys.w = dy < -threshold;
+    keys.s = dy > threshold;
+    keys.a = dx < -threshold;
+    keys.d = dx > threshold;
+  }
+
+  // --- 2. Camera Look Logic ---
+  let lookTouchId = null;
+  let lastLookX = 0, lastLookY = 0;
+
+  lookZone.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (lookTouchId === null) {
+      lookTouchId = e.changedTouches[0].identifier;
+      lastLookX = e.changedTouches[0].clientX;
+      lastLookY = e.changedTouches[0].clientY;
+    }
+  }, { passive: false });
+
+  lookZone.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === lookTouchId) {
+        const touch = e.changedTouches[i];
+        const dx = touch.clientX - lastLookX;
+        const dy = touch.clientY - lastLookY;
+        
+        cam.yaw -= dx * 0.005;
+        cam.pitch = clamp(cam.pitch - dy * 0.005, -0.25, 1.15);
+        
+        lastLookX = touch.clientX;
+        lastLookY = touch.clientY;
+        cam.idle = 0; // Wake up camera
+      }
+    }
+  }, { passive: false });
+
+  const endLook = (e) => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === lookTouchId) {
+        lookTouchId = null;
+      }
+    }
+  };
+  lookZone.addEventListener('touchend', endLook);
+  lookZone.addEventListener('touchcancel', endLook);
+
+  // --- 3. Action Buttons ---
+  const bindBtn = (id, keyName, isKeyMap = true) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      btn.classList.add('active');
+      if (isKeyMap) {
+        keys[keyName] = true;
+      } else if (keyName === 'e') {
+        pressed.e = true; // Trigger interaction
+      }
+    }, { passive: false });
+
+    btn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      btn.classList.remove('active');
+      if (isKeyMap) keys[keyName] = false;
+    });
+  };
+
+  bindBtn('btn-interact', 'e', false); // E uses 'pressed' object
+  bindBtn('btn-space', 'space');       // Space is in 'keys'
+  bindBtn('btn-shift', 'shift');       // Shift is in 'keys'
+})();
