@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mars Outpost</title>
+  <meta name="description" content="Survive, build and repair the Mars Outpost.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============ BACKGROUND AUDIO ============ -->
+   <div id="loading"><div class="loading-inner"><h1>MARS OUTPOST</h1><div class="loading-bar"><div class="loading-fill"></div></div><p>Initializing colony systems…</p></div></div>
+  <audio id="bgm" loop preload="none">
+    <source src="assets/background.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- ============ START / MENU OVERLAY ============ -->
+  <div id="menu" class="overlay">
+    <div class="menu-content">
+      <h1 class="game-title">MARS OUTPOST</h1>
+      <p class="subtitle">SURVIVE · BUILD · THRIVE</p>
+      <p class="mission-brief">
+        Complete 50 critical tasks across the colony to keep humanity's foothold on Mars alive.
+        Switch roles, deploy a hover, and keep the reactor cool.
+      </p>
+
+      <button id="start-btn" class="btn-primary">LAUNCH MISSION</button>
+
+      <div class="controls-hint">
+        <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</div>
+        <div><kbd>E</kbd> Interact</div>
+        <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Switch Role</div>
+        <div><kbd>Shift</kbd> Sprint / Boost</div>
+        <div><kbd>Space</kbd> Ascend</div>
+        <div><kbd>C</kbd> Descend</div>
+        <div><kbd>P</kbd> Pause</div>
+        <div><kbd>M</kbd> Mute</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PAUSE OVERLAY ============ -->
+  <div id="pause" class="overlay" style="display:none">
+    <div class="overlay-content">
+      <h2>PAUSED</h2>
+      <p>Click anywhere to resume</p>
+      <button id="resume-btn" class="btn-primary">RESUME</button>
+    </div>
+  </div>
+
+  <!-- ============ GAME OVER OVERLAY ============ -->
+  <div id="gameover" class="overlay" style="display:none">
+    <div class="overlay-content">
+      <h2 class="danger">MISSION FAILED</h2>
+      <p id="gameover-reason">You lost consciousness.</p>
+      <p id="gameover-stats" class="stats-line"></p>
+      <button id="restart-btn" class="btn-primary">RETRY MISSION</button>
+    </div>
+  </div>
+
+  <!-- ============ WIN OVERLAY ============ -->
+  <div id="win" class="overlay" style="display:none">
+    <div class="overlay-content">
+      <h2 class="success">MISSION COMPLETE</h2>
+      <p>All tasks completed. The outpost is stable.</p>
+      <p id="win-stats" class="stats-line"></p>
+      <button id="again-btn" class="btn-primary">PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <!-- ============ HUD (always on top, non-interactive) ============ -->
+  <div id="hud">
+
+    <!-- Crosshair -->
+    <div id="crosshair"></div>
+
+    <!-- Top-left : Role + tasks progress -->
+    <div class="hud-panel top-left">
+      <div id="role-text">ROLE: ENGINEER</div>
+      <div class="role-chips">
+        <span class="role-chip active" data-role="1">1</span>
+        <span class="role-chip"        data-role="2">2</span>
+        <span class="role-chip"        data-role="3">3</span>
+      </div>
+      <div class="tasks-progress">
+        <span id="tasks-done">0</span> / <span id="tasks-total">50</span> TASKS
+        <div class="bar small"><div id="task-bar"></div></div>
+      </div>
+    </div>
+
+    <!-- Top-right : Current objective -->
+    <div class="hud-panel top-right">
+      <div class="objective-label">OBJECTIVE</div>
+      <div id="objective">Awaiting assignment…</div>
+      <div id="task-progress-hint" class="progress-hint"></div>
+    </div>
+
+    <!-- Bottom-left : Vitals -->
+    <div class="hud-panel bottom-left">
+      <div class="stat-row">
+        <span class="stat-label">O₂</span>
+        <div class="bar"><div id="o2-bar"></div></div>
+        <span id="o2-value" class="stat-value">100%</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">POWER</span>
+        <div class="bar"><div id="power-bar"></div></div>
+        <span id="power-value" class="stat-value">100%</span>
+      </div>
+    </div>
+
+    <!-- Bottom-right : Hover (shown only when piloting) -->
+    <div class="hud-panel bottom-right" id="hover-panel" style="display:none">
+      <div class="stat-row">
+        <span class="stat-label">FUEL</span>
+        <div class="bar"><div id="fuel-bar"></div></div>
+        <span id="fuel-value" class="stat-value">100%</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">HULL</span>
+        <div class="bar"><div id="hull-bar"></div></div>
+        <span id="hull-value" class="stat-value">100%</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">ALT</span>
+        <span id="alt-value" class="stat-value">0m</span>
+        <span class="stat-label">SPD</span>
+        <span id="spd-value" class="stat-value">0</span>
+      </div>
+    </div>
+
+    <!-- Center-bottom : interaction prompt -->
+    <div id="hint"></div>
+
+    <!-- Toast notification -->
+    <div id="toast"></div>
+
+    <!-- Damage / heal flash -->
+    <div id="flash"></div>
+  </div>
+
+  <!-- ============ THREE.JS r128 (MUST load before game.js) ============ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- ============ GAME ============ -->
+  <script src="game.js"></script>
+
+  <!-- Hide loading overlay after everything is initialised -->
+  <script>
+    window.addEventListener('load', function () {
+      var l = document.getElementById('loading');
+      if (l) l.classList.add('hidden');
+    });
+  </script>
+</body>
+</html>
