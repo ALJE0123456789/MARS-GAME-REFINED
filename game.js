@@ -1894,6 +1894,10 @@ document.getElementById('start-btn').addEventListener('click', () => {
         if (el.requestFullscreen) el.requestFullscreen();
         else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen(); // Safari
         else if (el.msRequestFullscreen) el.msRequestFullscreen(); // IE11
+
+         if (screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock('landscape').catch(() => {});
+        }
       } catch (err) {
         console.warn("Fullscreen API failed, falling back to CSS:", err);
         togglePseudoFullscreen();
