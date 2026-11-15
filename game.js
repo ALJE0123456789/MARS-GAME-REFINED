@@ -1874,23 +1874,24 @@ document.getElementById('start-btn').addEventListener('click', () => {
 })();
 
 // =====================================================================
-// FULLSCREEN TOGGLE (Button + Double Tap)
+// BULLETPROOF FULLSCREEN TOGGLE
 // =====================================================================
 (function initFullscreen() {
   const btn = document.getElementById('fullscreen-btn');
   let isPseudoFullscreen = false;
 
-  // The core logic to toggle fullscreen
-  function toggleFullscreen(e) {
+  function triggerFullscreen(e) {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
 
-    const isNativeFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+    // Show a toast so we know the button was actually pressed
+    if (typeof toast === 'function') toast("Toggling Fullscreen...", 1500);
+
+    const isNative = document.fullscreenElement || document.webkitFullscreenElement;
     
-    // If we are already in pseudo or native fullscreen, EXIT.
-    if (isNativeFullscreen) {
+    if (isNative) {
       if (document.exitFullscreen) document.exitFullscreen();
       else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
       return;
@@ -1899,29 +1900,31 @@ document.getElementById('start-btn').addEventListener('click', () => {
       return;
     }
 
-    // Try Native Fullscreen First
+    // Try Native
     const el = document.documentElement;
     try {
       if (el.requestFullscreen) {
-        el.requestFullscreen().catch(() => togglePseudoFullscreen());
+        el.requestFullscreen().catch(() => {
+          // Native failed (blocked by phone), use CSS fallback
+          if (typeof toast === 'function') toast("Native Fullscreen blocked, using fallback", 2000);
+          togglePseudoFullscreen();
+        });
       } else if (el.webkitRequestFullscreen) {
         el.webkitRequestFullscreen();
       } else {
-        // If API doesn't exist at all, use CSS fallback immediately
+        // API doesn't exist, use CSS fallback
         togglePseudoFullscreen();
       }
       
-      // Try to lock orientation
+      // Try to lock landscape
       if (screen.orientation && screen.orientation.lock) {
         screen.orientation.lock('landscape').catch(() => {});
       }
     } catch (err) {
-      // If it throws an error (common on iOS), use CSS fallback
       togglePseudoFullscreen();
     }
   }
 
-  // --- CSS Pseudo-Fullscreen Fallback ---
   function togglePseudoFullscreen() {
     isPseudoFullscreen = !isPseudoFullscreen;
     const hud = document.getElementById('hud');
@@ -1931,19 +1934,14 @@ document.getElementById('start-btn').addEventListener('click', () => {
       document.body.classList.add('pseudo-fullscreen');
       if (hud) hud.classList.add('pseudo-fullscreen');
       if (canvas) canvas.classList.add('pseudo-fullscreen');
-      if (btn) btn.classList.add('active-fullscreen');
-      window.scrollTo(0, 1); // Hide URL bar
+      window.scrollTo(0, 1);
     } else {
       document.body.classList.remove('pseudo-fullscreen');
       if (hud) hud.classList.remove('pseudo-fullscreen');
       if (canvas) canvas.classList.remove('pseudo-fullscreen');
-      if (btn) btn.classList.remove('active-fullscreen');
     }
-    forceResize();
-  }
-
-  // Helper to resize the 3D engine
-  function forceResize() {
+    
+    // Force 3D engine resize
     if (typeof renderer !== 'undefined' && typeof camera !== 'undefined') {
       setTimeout(() => {
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -1953,49 +1951,30 @@ document.getElementById('start-btn').addEventListener('click', () => {
     }
   }
 
-  // 1. Attach to the button
+  // Attach to 'pointerdown' which is the most reliable mobile event
   if (btn) {
-    btn.addEventListener('click', toggleFullscreen);
-    btn.addEventListener('touchend', toggleFullscreen, { passive: false });
+    btn.addEventListener('pointerdown', triggerFullscreen);
+    btn.addEventListener('click', triggerFullscreen); // Desktop fallback
   }
-
-  // 2. Attach to Double Tap / Double Click anywhere on screen
-  document.addEventListener('dblclick', (e) => {
-    // Ignore if they double-tapped the on-screen controls
-    if (e.target.closest('#mobile-controls') || e.target.closest('.hud-panel') || e.target.closest('#fullscreen-btn')) {
-      return; 
-    }
-    toggleFullscreen(e);
-  });
-
-  // For mobile devices that don't fire 'dblclick' properly, we track taps
-  let lastTap = 0;
-  document.addEventListener('touchend', (e) => {
-    // Ignore if they tapped the on-screen controls
-    if (e.target.closest('#mobile-controls') || e.target.closest('.hud-panel') || e.target.closest('#fullscreen-btn')) {
-      return;
-    }
+})();
+// =====================================================================
+// MOBILE ROLE SWITCHING
+// =====================================================================
+(function initMobileRoles() {
+  const chips = document.querySelectorAll('.role-chip');
+  
+  chips.forEach(chip => {
+    // Handle both Desktop clicks and Mobile taps
+    const handleRoleChange = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const roleId = parseInt(chip.dataset.role);
+      if (typeof switchRole === 'function' && !isNaN(roleId)) {
+        switchRole(roleId);
+      }
+    };
     
-    const currentTime = new Date().getTime();
-    const tapLength = currentTime - lastTap;
-    if (tapLength < 300 && tapLength > 0) {
-      // Double tap detected!
-      toggleFullscreen(e);
-    }
-    lastTap = currentTime;
+    chip.addEventListener('click', handleRoleChange);
+    chip.addEventListener('touchstart', handleRoleChange, { passive: false });
   });
-  
-  // Update icon state when native fullscreen changes
-  document.addEventListener('fullscreenchange', updateIcon);
-  document.addEventListener('webkitfullscreenchange', updateIcon);
-  
-  function updateIcon() {
-    const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
-    if (!btn) return;
-    if (isFullscreen || isPseudoFullscreen) {
-      btn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>`;
-    } else {
-      btn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`;
-    }
-  }
 })();

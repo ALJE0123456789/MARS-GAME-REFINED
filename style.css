@@ -259,6 +259,8 @@ kbd {
   font-family: 'Share Tech Mono', monospace;
   color: #777;
   transition: all .15s;
+  pointer-events: auto; /* ADD THIS */
+  cursor: pointer;      /* ADD THIS */
 }
 .role-chip.active[data-role="1"] {
   background: #3498db; border-color: #3498db; color: #000;
@@ -552,25 +554,28 @@ kbd {
 }
 /* =====================  FULLSCREEN BUTTON  ===================== */
 #fullscreen-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  z-index: 400;
+  position: fixed;
+  top: 15px;
+  right: 15px; /* Put it top right for easy thumb access */
+  z-index: 99999; /* On top of absolutely everything */
   pointer-events: auto;
   width: 44px;
   height: 44px;
-  background: rgba(10, 5, 15, 0.55);
-  border: 1px solid rgba(127, 246, 255, 0.22);
-  border-radius: 4px;
+  background: rgba(10, 5, 15, 0.8);
+  border: 2px solid #7ff6ff;
+  border-radius: 8px;
   color: #7ff6ff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  backdrop-filter: blur(4px);
-  transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(127, 246, 255, 0.4);
 }
 
+#fullscreen-btn:active {
+  background: #7ff6ff;
+  color: #000;
+}
 #fullscreen-btn:hover {
   background: rgba(127, 246, 255, 0.2);
   box-shadow: 0 0 15px rgba(127, 246, 255, 0.5);
