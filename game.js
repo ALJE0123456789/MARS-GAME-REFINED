@@ -1861,3 +1861,49 @@ document.getElementById('start-btn').addEventListener('click', () => {
   bindBtn('btn-space', 'space');       // Space is in 'keys'
   bindBtn('btn-shift', 'shift');       // Shift is in 'keys'
 })();
+// =====================================================================
+// FULLSCREEN TOGGLE
+// =====================================================================
+(function initFullscreen() {
+  const btn = document.getElementById('fullscreen-btn');
+  if (!btn) return;
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault(); // Prevent pointer lock from triggering
+    
+    const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+
+    if (!isFullscreen) {
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen(); // Safari
+      else if (el.msRequestFullscreen) el.msRequestFullscreen();         // IE11
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      else if (document.msExitFullscreen) document.msExitFullscreen();
+    }
+  });
+
+  // Update the button icon when fullscreen state changes (e.g., user presses Esc)
+  const updateIcon = () => {
+    const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+    // Change the SVG to a "compress" icon if fullscreen
+    if (isFullscreen) {
+      btn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>`;
+    } else {
+      btn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`;
+    }
+    // Force Three.js to resize the canvas instantly
+    if (typeof renderer !== 'undefined') {
+      setTimeout(() => {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+      }, 100);
+    }
+  };
+
+  document.addEventListener('fullscreenchange', updateIcon);
+  document.addEventListener('webkitfullscreenchange', updateIcon);
+})();
