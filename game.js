@@ -1118,15 +1118,26 @@ window.addEventListener('keyup', e => setKey(e.code, false));
 window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
 let hadLock = false;
-function lockMouse() { try { const p = document.body.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* not supported */ } }
+function lockMouse() { 
+  const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  if (isTouchDevice) return; // Skip pointer lock on mobile
+  
+  try { const p = document.body.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* not supported */ } 
+}
 document.addEventListener('pointerlockchange', () => {
   const l = document.pointerLockElement === document.body;
   if (hadLock && !l && G.state === 'playing') pauseGame();
   hadLock = l;
 });
 document.body.addEventListener('click', () => {
-  if (G.state === 'playing' && !document.pointerLockElement) lockMouse();
-  else if (G.state === 'paused') resumeGame();
+  // Check if the device is a touch screen (mobile). If so, DO NOT lock the mouse.
+  const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  
+  if (!isTouchDevice && G.state === 'playing' && !document.pointerLockElement) {
+    lockMouse();
+  } else if (G.state === 'paused') {
+    resumeGame();
+  }
 });
 document.addEventListener('mousemove', e => {
   if (G.state !== 'playing' || document.pointerLockElement !== document.body) return;
@@ -1861,6 +1872,7 @@ document.getElementById('start-btn').addEventListener('click', () => {
   bindBtn('btn-space', 'space');       // Space is in 'keys'
   bindBtn('btn-shift', 'shift');       // Shift is in 'keys'
 })();
+
 // =====================================================================
 // FULLSCREEN TOGGLE (Mobile & iOS Safe)
 // =====================================================================
@@ -1868,7 +1880,6 @@ document.getElementById('start-btn').addEventListener('click', () => {
   const btn = document.getElementById('fullscreen-btn');
   if (!btn) return;
 
-  // Feature detect if native fullscreen is supported for our game container
   const docEl = document.documentElement;
   const nativeFullscreenSupported = !!(
     docEl.requestFullscreen ||
@@ -1876,11 +1887,13 @@ document.getElementById('start-btn').addEventListener('click', () => {
     docEl.msRequestFullscreen
   );
 
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation(); // Prevent the game canvas from capturing the click
+  // Using both click and touchend for maximum mobile compatibility
+  const handleFullscreen = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
 
-    // If native fullscreen isn't available (e.g., iPhone), apply CSS pseudo-fullscreen
     if (!nativeFullscreenSupported) {
       togglePseudoFullscreen();
       return;
@@ -1890,12 +1903,12 @@ document.getElementById('start-btn').addEventListener('click', () => {
 
     if (!isFullscreen) {
       try {
-        const el = docEl;
-        if (el.requestFullscreen) el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen(); // Safari
-        else if (el.msRequestFullscreen) el.msRequestFullscreen(); // IE11
-
-         if (screen.orientation && screen.orientation.lock) {
+        // Request fullscreen on the canvas or body, not just documentElement
+        const targetEl = document.body; 
+        if (targetEl.requestFullscreen) targetEl.requestFullscreen().catch(()=>togglePseudoFullscreen());
+        else if (targetEl.webkitRequestFullscreen) targetEl.webkitRequestFullscreen();
+        
+        if (screen.orientation && screen.orientation.lock) {
           screen.orientation.lock('landscape').catch(() => {});
         }
       } catch (err) {
@@ -1907,7 +1920,10 @@ document.getElementById('start-btn').addEventListener('click', () => {
       else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
       else if (document.msExitFullscreen) document.msExitFullscreen();
     }
-  });
+  };
+
+  btn.addEventListener('click', handleFullscreen);
+  btn.addEventListener('touchend', handleFullscreen, { passive: false });
 
   // --- iOS / Fallback Pseudo-Fullscreen ---
   let isPseudoFullscreen = false;
@@ -1916,52 +1932,29 @@ document.getElementById('start-btn').addEventListener('click', () => {
     isPseudoFullscreen = !isPseudoFullscreen;
     const hud = document.getElementById('hud');
     const canvas = document.querySelector('canvas');
-    const btn = document.getElementById('fullscreen-btn');
 
     if (isPseudoFullscreen) {
-      // Expand to fill the visual viewport
       document.body.classList.add('pseudo-fullscreen');
       if (hud) hud.classList.add('pseudo-fullscreen');
       if (canvas) canvas.classList.add('pseudo-fullscreen');
       if (btn) btn.classList.add('active-fullscreen');
-      
-      // Attempt to hide the URL bar by scrolling down 1px
       window.scrollTo(0, 1);
     } else {
-      // Revert back to normal
       document.body.classList.remove('pseudo-fullscreen');
       if (hud) hud.classList.remove('pseudo-fullscreen');
       if (canvas) canvas.classList.remove('pseudo-fullscreen');
       if (btn) btn.classList.remove('active-fullscreen');
     }
-    
-    // Force the game engine to recalculate screen size
     forceResize();
   }
 
-  // Update the icon when native fullscreen state changes
-  const updateIcon = () => {
-    const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
-    
-    if (isFullscreen) {
-      btn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>`;
-    } else {
-      btn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`;
-    }
-    forceResize();
-  };
-
-  document.addEventListener('fullscreenchange', updateIcon);
-  document.addEventListener('webkitfullscreenchange', updateIcon);
-
-  // Helper to force Three.js to update its camera and renderer size
   function forceResize() {
     if (typeof renderer !== 'undefined' && typeof camera !== 'undefined') {
       setTimeout(() => {
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
-      }, 100);
+      }, 150);
     }
   }
 })();
