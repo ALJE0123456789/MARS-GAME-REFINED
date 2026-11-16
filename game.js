@@ -1703,6 +1703,16 @@ function animate() {
   // Add these to your main game loop:
 txt('o2-value', Math.round(player.o2) + '%');
 txt('power-value', Math.round(player.power) + '%');
+// Add these two lines:
+bar('o2-bar', player.o2);
+bar('power-bar', player.power);
+// Add this inside your main game loop:
+if (player.inHover && hv.alive) {
+  txt('fuel-value', Math.round(hv.fuel) + '%');
+  txt('hull-value', Math.round(hv.hull) + '%');
+  txt('spd-value', Math.round(hv.spd || 0)); 
+  txt('alt-value', Math.round(hv.alt || 0) + 'm');
+}
   renderer.render(scene, camera);
 }
 switchRole(1);
@@ -1868,11 +1878,46 @@ document.getElementById('start-btn').addEventListener('click', () => {
     });
   };
 
-  bindBtn('btn-interact', 'e', false); // E uses 'pressed' object
-  bindBtn('btn-space', 'space');       // Space is in 'keys'
-  bindBtn('btn-shift', 'shift');       // Shift is in 'keys'
+    bindBtn('btn-interact', 'e', false); 
+  bindBtn('btn-space', 'space');       
+  bindBtn('btn-shift', 'shift');       
+  
+  // ADD THESE NEW BINDINGS:
+  bindBtn('btn-up', 'space');          // Up is mapped to Space
+  bindBtn('btn-down', 'down');         // Down is mapped to 'C' key
+  bindBtn('btn-boost', 'shift');       // Boost is mapped to Shift
 })();
 
+// =====================================================================
+// DYNAMIC MOBILE CONTROLS (SWAP ON HOVER)
+// =====================================================================
+(function monitorHoverState() {
+  const actionBtns = document.getElementById('action-buttons');
+  if (!actionBtns) return;
+
+  let wasInHover = false;
+
+  // Check the game state 4 times a second
+  setInterval(() => {
+    // Only run if the game is running
+    if (typeof G !== 'undefined' && G.state !== 'playing') return;
+
+    // Check if the player is inside the hover
+    const inHover = (typeof player !== 'undefined' && player.inHover);
+
+    if (inHover !== wasInHover) {
+      wasInHover = inHover;
+      
+      if (inHover) {
+        // Swap to Hover UI
+        actionBtns.classList.add('in-hover');
+      } else {
+        // Swap back to Walking UI
+        actionBtns.classList.remove('in-hover');
+      }
+    }
+  }, 250); // Check every 250ms
+})();
 // =====================================================================
 // BULLETPROOF FULLSCREEN TOGGLE
 // =====================================================================

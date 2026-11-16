@@ -675,3 +675,27 @@ canvas.pseudo-fullscreen {
     display: flex;
   }
 }
+
+/* Hide the hover buttons by default */
+.hover-only { display: none !important; }
+
+/* When the player enters the hover, swap the buttons! */
+#action-buttons.in-hover .walk-only { display: none !important; }
+#action-buttons.in-hover .hover-only { display: flex !important; }
+
+/* Adjust positioning for the extra buttons in hover mode */
+#action-buttons.in-hover {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  bottom: 20px;
+  right: 20px;
+}
+
+#action-buttons.in-hover .mobile-btn {
+  position: relative; /* Override the diamond layout */
+  top: auto; right: auto; bottom: auto; left: auto;
+  width: 60px; 
+  height: 60px;
+  font-size: 0.75rem;
+}
